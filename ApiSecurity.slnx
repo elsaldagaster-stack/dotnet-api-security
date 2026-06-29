@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ApiSecurity.API/ApiSecurity.API.csproj" />
+    <Project Path="src/ApiSecurity.Application/ApiSecurity.Application.csproj" />
+    <Project Path="src/ApiSecurity.Domain/ApiSecurity.Domain.csproj" />
+    <Project Path="src/ApiSecurity.Infrastructure/ApiSecurity.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ApiSecurity.IntegrationTests/ApiSecurity.IntegrationTests.csproj" />
+    <Project Path="tests/ApiSecurity.UnitTests/ApiSecurity.UnitTests.csproj" />
+  </Folder>
+</Solution>

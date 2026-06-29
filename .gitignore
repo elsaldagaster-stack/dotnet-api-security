@@ -1,0 +1,26 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+*.userprefs
+
+# Build
+/publish/
+/artifacts/
+
+# Test results
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# Environment
+.env
+.env.local
+appsettings.Local.json
+
+# Docker volumes
+pgdata/
