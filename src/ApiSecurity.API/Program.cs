@@ -1,41 +1,86 @@
+using ApiSecurity.API.Endpoints;
+using ApiSecurity.API.Extensions;
+using ApiSecurity.API.Middleware;
+using ApiSecurity.Application.Common;
+using ApiSecurity.Application.Interfaces;
+using ApiSecurity.Infrastructure.Persistence;
+using ApiSecurity.Infrastructure.Repositories;
+using ApiSecurity.Infrastructure.Security;
+using FluentValidation;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Scalar.AspNetCore;
+using Serilog;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Host.UseSerilog((ctx, cfg) =>
+    cfg.ReadFrom.Configuration(ctx.Configuration)
+       .WriteTo.Console()
+       .WriteTo.Seq(ctx.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341"));
+
+builder.Services.AddDbContext<AppDbContext>(opt =>
+    opt.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+
+builder.Services.AddScoped<IApiKeyRepository, ApiKeyRepository>();
+builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+
+builder.Services.AddSingleton<IApiKeyHasher, ApiKeyHasher>();
+builder.Services.AddSingleton<ITokenService, JwtTokenService>();
+
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(ApiSecurity.Application.ApiKeys.Commands.CreateApiKeyCommand).Assembly));
+
+builder.Services.AddValidatorsFromAssembly(typeof(ApiSecurity.Application.ApiKeys.Commands.CreateApiKeyCommand).Assembly);
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+builder.Services.AddApiAuthentication(builder.Configuration);
+builder.Services.AddApiCors(builder.Configuration);
+builder.Services.AddApiRateLimiting();
+
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("Default")!);
+
 builder.Services.AddOpenApi();
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing
+        .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("ApiSecurity"))
+        .AddAspNetCoreInstrumentation()
+        .AddJaegerExporter());
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
+
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseMiddleware<IpFilterMiddleware>();
+app.UseMiddleware<AuditLogMiddleware>();
+
+app.UseCors(CorsExtensions.PolicyName);
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapAuthEndpoints();
+app.MapApiKeyEndpoints();
+app.MapProductEndpoints();
+app.MapHealthChecks("/health");
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+public partial class Program { }
