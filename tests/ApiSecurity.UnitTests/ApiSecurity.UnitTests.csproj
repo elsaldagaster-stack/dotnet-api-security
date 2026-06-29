@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ApiSecurity.Infrastructure\ApiSecurity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\ApiSecurity.API\ApiSecurity.API.csproj" />
   </ItemGroup>
 
 </Project>
