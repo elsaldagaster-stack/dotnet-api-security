@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main, feature/security-patterns ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: apisecurity_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --no-incremental
+
+      - name: Unit Tests
+        run: dotnet test tests/ApiSecurity.UnitTests/ApiSecurity.UnitTests.csproj --no-build --collect:"XPlat Code Coverage"
+
+      - name: Integration Tests
+        run: dotnet test tests/ApiSecurity.IntegrationTests/ApiSecurity.IntegrationTests.csproj --no-build --collect:"XPlat Code Coverage"
+        env:
+          ConnectionStrings__Default: "Host=localhost;Port=5432;Database=apisecurity_ci;Username=postgres;Password=postgres"
+
+      - name: Docker build smoke test
+        run: docker build -f src/ApiSecurity.API/Dockerfile -t apisecurity:ci .
