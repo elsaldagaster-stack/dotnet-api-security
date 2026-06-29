@@ -42,8 +42,7 @@ public class ApiTestFixture : WebApplicationFactory<Program>, IAsyncLifetime
                 ["Jwt:Audience"] = "api-security",
                 ["Jwt:AccessTokenExpiryMinutes"] = "15",
                 ["Jwt:RefreshTokenExpiryDays"] = "7",
-                ["IpFilter:Allowlist:0"] = "",
-                ["IpFilter:Denylist:0"] = ""
+                ["ConnectionStrings:Default"] = _postgres.GetConnectionString()
             });
         });
     }
