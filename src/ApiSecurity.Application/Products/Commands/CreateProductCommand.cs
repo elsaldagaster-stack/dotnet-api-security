@@ -1,5 +1,6 @@
 using ApiSecurity.Application.Interfaces;
 using ApiSecurity.Domain.Entities;
+using ApiSecurity.Domain.Enums;
 using FluentValidation;
 using MediatR;
 
@@ -7,7 +8,7 @@ namespace ApiSecurity.Application.Products.Commands;
 
 public record CreateProductCommand(string Name, decimal Price, int Stock) : IRequest<Guid>;
 
-public class CreateProductCommandHandler(IProductRepository repository)
+public class CreateProductCommandHandler(IProductRepository repository, IWebhookDispatcher dispatcher)
     : IRequestHandler<CreateProductCommand, Guid>
 {
     public async Task<Guid> Handle(CreateProductCommand request, CancellationToken ct)
@@ -15,6 +16,16 @@ public class CreateProductCommandHandler(IProductRepository repository)
         var product = Product.Create(request.Name, request.Price, request.Stock);
         await repository.AddAsync(product, ct);
         await repository.SaveChangesAsync(ct);
+
+        var payload = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            product.Id,
+            product.Name,
+            product.Price,
+            product.Stock
+        });
+        await dispatcher.DispatchAsync(WebhookEventType.ProductCreated, payload, ct);
+
         return product.Id;
     }
 }
