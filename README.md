@@ -26,6 +26,16 @@ Clean Architecture — Domain / Application / Infrastructure / API layers. Secur
 Request → SecurityHeaders → IpFilter → AuditLog → CORS → RateLimiter → Auth → Endpoints
 ```
 
+## AI-Assisted Development
+
+This project was built using Claude Code as the primary AI coding assistant.
+
+- [`CLAUDE.md`](CLAUDE.md) — Architecture context loaded at every AI session
+- [`docs/ai-workflow/retrospective.md`](docs/ai-workflow/retrospective.md) — How AI is used, where it helps, and where human review is required
+- PR descriptions include an **AI-Assisted Development Log** documenting what was generated vs. modified
+
+Key principle: AI generates the draft. The ADRs, constraints in CLAUDE.md, and test suite define what "correct" means. The developer validates the output against those standards.
+
 ## Quick Start
 
 **Prerequisites:** Docker Desktop
