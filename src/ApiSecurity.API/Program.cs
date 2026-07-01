@@ -3,9 +3,11 @@ using ApiSecurity.API.Extensions;
 using ApiSecurity.API.Middleware;
 using ApiSecurity.Application.Common;
 using ApiSecurity.Application.Interfaces;
+using ApiSecurity.Application.Webhooks;
 using ApiSecurity.Infrastructure.Persistence;
 using ApiSecurity.Infrastructure.Repositories;
 using ApiSecurity.Infrastructure.Security;
+using ApiSecurity.Infrastructure.Webhooks;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +32,14 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
 builder.Services.AddSingleton<IApiKeyHasher, ApiKeyHasher>();
 builder.Services.AddSingleton<ITokenService, JwtTokenService>();
+
+builder.Services.AddScoped<IWebhookRepository, WebhookRepository>();
+builder.Services.AddScoped<IWebhookDispatcher, WebhookDispatcher>();
+builder.Services.AddScoped<IWebhookSignatureService, WebhookSignatureService>();
+builder.Services.AddScoped<IWebhookDeliveryService, WebhookDeliveryService>();
+builder.Services.AddHostedService<WebhookDeliveryWorker>();
+builder.Services.AddHttpClient("webhook").ConfigureHttpClient(c =>
+    c.Timeout = TimeSpan.FromSeconds(30));
 
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(ApiSecurity.Application.ApiKeys.Commands.CreateApiKeyCommand).Assembly));
@@ -79,6 +89,7 @@ if (app.Environment.IsDevelopment())
 app.MapAuthEndpoints();
 app.MapApiKeyEndpoints();
 app.MapProductEndpoints();
+app.MapWebhookEndpoints();
 app.MapHealthChecks("/health");
 
 app.Run();
