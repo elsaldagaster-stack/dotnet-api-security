@@ -17,6 +17,8 @@ public class ApiTestFixture : WebApplicationFactory<Program>, IAsyncLifetime
         .WithPassword("test")
         .Build();
 
+    public FakeWebhookHandler WebhookFakeHandler { get; } = new();
+
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
@@ -31,6 +33,9 @@ public class ApiTestFixture : WebApplicationFactory<Program>, IAsyncLifetime
 
             services.AddDbContext<AppDbContext>(opt =>
                 opt.UseNpgsql(_postgres.GetConnectionString()));
+
+            services.AddHttpClient("webhook")
+                .ConfigurePrimaryHttpMessageHandler(() => WebhookFakeHandler);
         });
 
         builder.ConfigureAppConfiguration((_, config) =>
